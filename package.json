@@ -1,0 +1,16 @@
+{
+  "name": "rune.js",
+  "version": "1.0.0",
+  "description": "To build your own eDSL in JavaScript",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "eDSL"
+  ],
+  "author": "Greg Weng <snowmantw@gmail.com>",
+  "license": "Apache 2",
+  "dependencies": {
+    "babel-runtime": "^5.8.20"
+  }
+}
