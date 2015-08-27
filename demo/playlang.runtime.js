@@ -24,9 +24,12 @@ Runtime.Deferred = function() {
   return this;
 };
 
-Runtime.Context = function() {};
+Runtime.Context = function() {
+  this.deferred = new Runtime.Deferred();
+};
 Runtime.Context.prototype.returns = function(retvar) {
-  this._retvar = retvar;
+  this.retvar = retvar;
+  this.deferred.resolve(retvar);
 };
 
 Runtime.prototype.start = function() {
@@ -35,7 +38,6 @@ Runtime.prototype.start = function() {
   this.resolve = deferred.resolve;
   this.reject = deferred.reject;
   this.result = null; // the result from each step.
-  this.context = new Runtime.Context(); // as '__self' for the callbacks.
   return this;
 };
 
@@ -45,19 +47,20 @@ Runtime.prototype.done = function() {
 
 Runtime.prototype.next = function(step) {
   this.queue = this.queue.then(() => {
-    console.log('>>>>>>> next: ', Date.now());
-    var newPromise = step(this.result);
-    if (newPromise.next) {
+    var context = new Runtime.Context();
+    step(context, this.result);
+    return context.deferred.promise;
+  }).then((result) => {
+    if (result.next) {
       // If it's also a Playlang statements, concat it.
-      return newPromise.queue;
+      return result.queue;
     } else {
       // No matter it's value from an ordinary function or
       // a Promise, returning it is legit for a Promise.
-      return newPromise;
+      return result;
     }
   })
   .then((result) => {
-    console.log('>>>> set result;');
     // Get the result from newPromise and set it.
     this.result = result;
   })
@@ -226,31 +229,59 @@ Runtime.prototype.any = function() {
   });
 };
 
-Runtime.prototype.all = function() {
-  var updateResult = (result) => {
-    this.result = result;
-  };
-  var generatePromise = (step) => {
-    var newPromise = step(this.result);
-    if (newPromise.next) {
-      return newPromise.queue;
-    } else if (newPromise.then) {
-      return newPromise;
-    } else {
-      // Ordinary function will return the result.
-      var newResult = newPromise;
-      updateResult(newResult);
-      return Promise.resolve(newResult);
-    }
-  };
+Runtime.prototype.any = function() {
+  var any = this._raceOrAll('race');
   var candidates = Array.from(arguments);
-  this.queue = this.queue.then(() => {
-    return Promise.all(candidates.map((step) => {
-      return generatePromise(step);
-    })).then(updateResult);
-  })
-  .catch((err) => {
-    this.reject(err);
-  });
+  any.call(this, candidates);
+};
+
+Runtime.prototype.all = function() {
+  var all = this._raceOrAll('all');
+  var candidates = Array.from(arguments);
+  all.call(this, candidates);
+};
+
+Runtime.prototype._raceOrAll = function(promiseMethod) {
+  var generated = (candidates) => {
+    var updateResult = (result) => {
+      this.result = result;
+    };
+    var generatePromise = (step) => {
+      var context = new Runtime.Context();
+      step(context, this.result);
+      return context.deferred.promise
+        .then((result) => {
+          if (result.next) {
+            return result.queue;
+          } else if (result.then) {
+            return result.then(updateResult);
+          } else {
+            // Ordinary function will return the plain result.
+            // And we need to turn it as a promise.
+            return Promise.resolve(result);
+          }
+        });
+    };
+    this.queue = this.queue.then(() => {
+      // Catch generatePromise.
+      try {
+        var allPromises = candidates.map((step) => {
+          return generatePromise(step);
+        });
+        if ('race' === promiseMethod) {
+          return Promise.race(allPromises).then(updateResult);
+        } else if ('all' === promiseMethod) {
+          return Promise.all(allPromises).then(updateResult);
+        }
+      } catch(e) {
+        console.error(e);
+        throw e;
+      }
+    })
+    .catch((err) => {
+      this.reject(err);
+    });
+  };
+  return generated;
 };
 
