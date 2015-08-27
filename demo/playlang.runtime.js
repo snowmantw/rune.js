@@ -114,20 +114,24 @@ Runtime.prototype.to = function(step) {
     // Only append the step if the previous one is true.
     if (!this.matching.matched && this.matching[id]) {
       this.matching.matched = true;
-      // If it matches the condition, execute the step before we move
-      // to the next step of main queue.
-      var newPromise = step(this.result);
-      if (newPromise.next) {
-        return newPromise.queue;
-      } else {
-        return newPromise;
-      }
+      var context = new Runtime.Context();
+      step(context, this.result);
+      return context.deferred.promise;
     } else {
       return this.result;
     }
+  }).then((result) => {
+    if (result.next) {
+      return result.queue;
+    } else {
+      return result;
+    }
   })
   .then((result) => {
-    this.result = result;
+    if (this.matching.matched) {
+      this.result = result;
+    }
+    // Or, do not update the result it got.
   })
   .catch((err) => {
     this.reject(err);

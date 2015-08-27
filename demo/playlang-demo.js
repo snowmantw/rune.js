@@ -6,6 +6,20 @@ var playlang = new Playlang();
 playlang.start()
   .next((ctx) => { console.log('>>>>> #0'); ctx.returns(3); })
   .next((ctx, x) => { console.log('>>>>> #1', x); ctx.returns(x + 4);})
+  .match()
+    .case((n) => n < 7).to((ctx, a) => { ctx.returns(a + 1);})
+    .case((n) => n > 7 ).to((ctx, b) => { ctx.returns(b + 999);})
+    .case((n) => n === 7 ).to((ctx, c) => {
+      new Promise((r, j) => {
+        setTimeout(r, 2000);
+      }).then(() => {
+        ctx.returns(c+1);
+      });
+    })
+    .case((n) => n === 7 ).to((ctx, d) => {
+      ctx.returns(d - 255);
+    })
+  .end()
   .next((ctx, x) => { console.log('>>>>> #2', x); ctx.returns(x + 5);})
   .all((ctx) => {ctx.returns(1); },
       (ctx) => {
