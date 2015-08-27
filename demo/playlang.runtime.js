@@ -18,14 +18,20 @@ Runtime.prototype.onchange = function(instance, change, stack) {
 Runtime.Deferred = function() {
   var promise = new Promise((resolve, reject) => {
     this.resolve = resolve;
-    this.reject = reject;
+    this.reject = function(e) {
+      reject(e);
+      throw e;
+    };
   });
   this.promise = promise;
   return this;
 };
 
-Runtime.Context = function() {
+Runtime.Context = function(environment) {
   this.deferred = new Runtime.Deferred();
+  for (var name in environment) {
+    this[name] = environment[name];
+  }
 };
 Runtime.Context.prototype.returns = function(retvar) {
   this.retvar = retvar;
@@ -38,16 +44,38 @@ Runtime.prototype.start = function() {
   this.resolve = deferred.resolve;
   this.reject = deferred.reject;
   this.result = null; // the result from each step.
+  this.environment = {};
   return this;
+};
+
+Runtime.prototype.as = function(name) {
+  this.queue = this.queue.then(() => {
+    if ('undefined' !== typeof this.environment[name]) {
+      throw new Error('Scoped variable \'' + name + '\' defined twice');
+    }
+    if ('undefined' !== typeof Runtime.Context.prototype[name]) {
+      throw new Error('Refuse to name variable as context reversed word: ' +
+        '\'' + name + '\'');
+    }
+    this.environment[name] = this.result;
+    return this.result;
+  })
+  .catch((err) => {
+    this.reject(err);
+  });
 };
 
 Runtime.prototype.done = function() {
   this.resolve(); // So the queue start to execute.
 };
 
+Runtime.prototype._createContext = function() {
+  return new Runtime.Context(this.environment);
+};
+
 Runtime.prototype.next = function(step) {
   this.queue = this.queue.then(() => {
-    var context = new Runtime.Context();
+    var context = this._createContext();
     step(context, this.result);
     return context.deferred.promise;
   }).then((result) => {
@@ -107,6 +135,7 @@ Runtime.prototype.case = function(pred) {
   });
 };
 
+// TODO: default one...to prevent stucking
 Runtime.prototype.to = function(step) {
   // It's always case..to, so we only need to concat
   // 'to' promise after the 'case' promise.
@@ -114,7 +143,7 @@ Runtime.prototype.to = function(step) {
     // Only append the step if the previous one is true.
     if (!this.matching.matched && this.matching[id]) {
       this.matching.matched = true;
-      var context = new Runtime.Context();
+      var context = this._createContext();
       step(context, this.result);
       return context.deferred.promise;
     } else {

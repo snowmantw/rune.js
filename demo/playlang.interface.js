@@ -32,6 +32,7 @@ Interface.prototype.match = Rune.define('match', 'begin');
 Interface.prototype.end = Rune.define('end', 'end');
 Interface.prototype.case = Rune.define('case', 'push');
 Interface.prototype.to = Rune.define('to', 'push');
+Interface.prototype.as = Rune.define('as', 'push');
 Interface.prototype.loop = Rune.define('loop', 'begin');
 Interface.prototype.until = Rune.define('until', 'end');
 Interface.prototype.any = Rune.define('any', 'push');
