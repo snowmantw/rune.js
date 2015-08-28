@@ -31,9 +31,20 @@ Runtime.Context = function(environment) {
   }
 };
 
+/**
+ * Returning will move the main process to the next step.
+ */
 Runtime.Context.prototype.returns = function(retvar) {
-  this.retvar = retvar;
-  this.deferred.resolve(retvar);
+  if (!this.interrupted) {
+    this.retvar = retvar;
+    this.deferred.resolve(retvar);
+  } else {
+    // If it's already interrupted, do nothing.
+    // In theory this should nullify all effects, since we should
+    // never do effect during steps. So if a process was interrupted
+    // before it ends all date manipulation steps, it should do nothing.
+    this.deferred.reject();
+  }
 };
 
 Runtime.Context.prototype.raise = function(err) {
@@ -42,6 +53,7 @@ Runtime.Context.prototype.raise = function(err) {
 };
 
 Runtime.Context.prototype.interrupt = function(reason = '') {
+  this.interrupted = true;
   // The interrupt will be captured by main queue's `onProcessError`.
   var interrupt = new Runtime.Interrupt(reason);
   this.deferred.reject(interrupt);

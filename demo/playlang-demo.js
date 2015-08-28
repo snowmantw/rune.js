@@ -57,8 +57,10 @@ playlang.start()
   })
   .next((ctx) => {
     console.log('>>>>> try to raise or interrupt');
-    ctx.raise('TRY TO RAISE');
-    //ctx.interrupt('TEST INTERRUPT');
+    //ctx.raise('TRY TO RAISE');
+    ctx.interrupt('TEST INTERRUPT');
+    // `interrupts` should cancel the `returns`.
+    ctx.returns(3);
   })
   .next((ctx, rs) => {
     console.log('>>>>>>> should not run!');
@@ -69,7 +71,7 @@ playlang.start()
     ctx.returns(1);
   })
   .done();
-  // TODO: done --> run!
+  // TODO: done --> run! and `effect`!
 
 /*
 
