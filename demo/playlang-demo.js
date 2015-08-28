@@ -55,6 +55,19 @@ playlang.start()
     console.log('>>>>>>> rs: ', rs);
     ctx.returns(1);
   })
+  .next((ctx) => {
+    console.log('>>>>> try to raise or interrupt');
+    //ctx.raise('TRY TO RAISE');
+    ctx.interrupt('TEST INTERRUPT');
+  })
+  .next((ctx, rs) => {
+    console.log('>>>>>>> should not run!');
+    ctx.returns(1);
+  })
+  .next((ctx, rs) => {
+    console.log('>>>>>>> should not run!');
+    ctx.returns(1);
+  })
   .done();
   // TODO: done --> run!
 

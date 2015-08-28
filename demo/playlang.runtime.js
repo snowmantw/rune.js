@@ -18,10 +18,7 @@ Runtime.prototype.onchange = function(instance, change, stack) {
 Runtime.Deferred = function() {
   var promise = new Promise((resolve, reject) => {
     this.resolve = resolve;
-    this.reject = function(e) {
-      reject(e);
-      throw e;
-    };
+    this.reject = reject;
   });
   this.promise = promise;
   return this;
@@ -33,14 +30,42 @@ Runtime.Context = function(environment) {
     this[name] = environment[name];
   }
 };
+
 Runtime.Context.prototype.returns = function(retvar) {
   this.retvar = retvar;
   this.deferred.resolve(retvar);
 };
 
+Runtime.Context.prototype.raise = function(err) {
+  // The error will be captured by main queue's `onProcessError`.
+  this.deferred.reject(err);
+};
+
+Runtime.Context.prototype.interrupt = function(reason = '') {
+  // The interrupt will be captured by main queue's `onProcessError`.
+  var interrupt = new Runtime.Interrupt(reason);
+  this.deferred.reject(interrupt);
+};
+
+Runtime.Interrupt = function() {};
+
+Runtime.prototype.onProcessError = function(err) {
+  if (!(err instanceof Runtime.Interrupt)) {
+    // Print it to debug.
+    console.error(err);
+    // Then to interrupt the process.
+    throw err;
+  } else {
+    // Only to interrupt the process.
+    //throw err;
+  }
+};
+
 Runtime.prototype.start = function() {
   var deferred = new Runtime.Deferred();
   this.queue = deferred.promise;
+  // We will resolve it at `done` anyway, so
+  // `reject` doesn't matter.
   this.resolve = deferred.resolve;
   this.reject = deferred.reject;
   this.result = null; // the result from each step.
@@ -61,11 +86,12 @@ Runtime.prototype.as = function(name) {
     return this.result;
   })
   .catch((err) => {
-    this.reject(err);
+    this.onProcessError(err);
   });
 };
 
 Runtime.prototype.done = function() {
+  this.queue = this.queue.catch(this.onProcessError.bind(this));
   this.resolve(); // So the queue start to execute.
 };
 
@@ -93,7 +119,7 @@ Runtime.prototype.next = function(step) {
     this.result = result;
   })
   .catch((err) => {
-    this.reject(err);
+    this.onProcessError(err);
   });
 };
 
@@ -104,7 +130,7 @@ Runtime.prototype.match = function() {
     this.matching.matched = false;
   })
   .catch((err) => {
-    this.reject(err);
+    this.onProcessError(err);
   });
 };
 
@@ -113,7 +139,7 @@ Runtime.prototype.end = function() {
   this.queue = this.queue.then(() => {
     this.matching = null;
   }).catch((err) => {
-    this.reject(err);
+    this.onProcessError(err);
   });
 };
 
@@ -131,7 +157,7 @@ Runtime.prototype.case = function(pred) {
     this.matching[id] = predresult;
     return id;
   }).catch((err) => {
-    this.reject(err);
+    this.onProcessError(err);
   });
 };
 
@@ -162,7 +188,7 @@ Runtime.prototype.to = function(step) {
     // Or, do not update the result it got.
   })
   .catch((err) => {
-    this.reject(err);
+    this.onProcessError(err);
   });
 };
 
@@ -215,7 +241,7 @@ Runtime.prototype.loop = function(step) {
     return this.looping.queueblocker.promise;
   })
   .catch((err) => {
-    this.reject(err);
+    this.onProcessError(err);
   });
 };
 
@@ -237,7 +263,7 @@ Runtime.prototype.until = function(pred) {
       });
   })
   .catch((err) => {
-    this.reject(err);
+    this.onProcessError(err);
   });
 };
 
@@ -265,7 +291,7 @@ Runtime.prototype.any = function() {
     })).then(updateResult);
   })
   .catch((err) => {
-    this.reject(err);
+    this.onProcessError(err);
   });
 };
 
@@ -319,7 +345,7 @@ Runtime.prototype._raceOrAll = function(promiseMethod) {
       }
     })
     .catch((err) => {
-      this.reject(err);
+      this.onProcessError(err);
     });
   };
   return generated;
