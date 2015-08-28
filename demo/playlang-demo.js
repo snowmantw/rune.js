@@ -5,21 +5,36 @@ import Playlang from './playlang.js';
 var playlang = new Playlang();
 playlang.start()
   .next((ctx) => { console.log('>>>>> #0'); ctx.returns(3); }).as('a')
+  .until((x) => x === 9)
+  .loop((ctx, x) => {
+    ctx.returns(x + 1);
+  })
+  .until((x) => x === 9)
+  .loop((ctx, x) => {
+    console.log('>>>>>>> I should not run!');
+    ctx.returns(x + 1);
+  })
+  .until((x) => x === 10)
+  .loop((ctx, x) => {
+    console.log('>>>>>>> I should run once');
+    ctx.returns(x + 1);
+  })
   .next((ctx, x) => { console.log('>>>>> #1', x); ctx.returns(x + 4);}).as('b')
   .next((ctx) => {
+    console.log('>>>>>>>>> #+ab: ', ctx.a + ctx.b);
     ctx.returns(ctx.a + ctx.b);
   })
   .match()
-    .case((n) => n < 10).to((ctx, a) => { ctx.returns(a + 1);})
-    .case((n) => n > 10 ).to((ctx, b) => { ctx.returns(b + 999);})
-    .case((n) => n === 10 ).to((ctx, c) => {
+    .case((n) => n < 17).to((ctx, a) => { ctx.returns(a + 1);})
+    .case((n) => n > 17 ).to((ctx, b) => { ctx.returns(b + 999);})
+    .case((n) => n === 17 ).to((ctx, c) => {
       new Promise((r, j) => {
         setTimeout(r, 2000);
       }).then(() => {
         ctx.returns(c+1);
       });
     })
-    .case((n) => n === 10 ).to((ctx, d) => {
+    .case((n) => n === 17 ).to((ctx, d) => {
       ctx.returns(d - 255);
     })
   .end()

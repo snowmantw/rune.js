@@ -135,7 +135,6 @@ Runtime.prototype.case = function(pred) {
   });
 };
 
-// TODO: default one...to prevent stucking
 Runtime.prototype.to = function(step) {
   // It's always case..to, so we only need to concat
   // 'to' promise after the 'case' promise.
@@ -182,34 +181,37 @@ Runtime.prototype.to = function(step) {
  */
 Runtime.prototype.loop = function(step) {
   this.queue = this.queue.then(() => {
-    var loopqueue = this.looping.loopingpromise.promise;
+    var loopqueue = this.looping.loopingpromise;
     var pred = this.looping.pred;
-    var updateResult = (result) => {
-      this.result = result;
+
+    var append = () => {
+      this.looping.loopingpromise.promise =
+        loopqueue.then(() => {
+          var context = this._createContext();
+          step(context, this.result);
+          return context.deferred.promise;
+        }).then((result) => {
+          if (result.next) {
+            return result.queue;
+          } else {
+            return result;
+          }
+        })
+        .then((result) => {
+          this.result = result;
+          if (!pred(this.result)) {
+            append();
+          } else {
+            this.looping.queueblocker.resolve();
+          }
+        });
     };
-    var generatePromise = () => {
-      var newPromise = step(this.result);
-      if (newPromise.next) {
-        return newPromise.queue.then(updateResult);
-      } else if (newPromise.then) {
-        return newPromise.then(updateResult);
-      } else {
-        // Ordinary function will return the result.
-        var newResult = newPromise;
-        updateResult(newResult);
-        return Promise.resolve();
-      }
-    };
-    this.looping.loopingpromise.promise =
-      loopqueue.then(() => {
-        if (pred(this.result)) {
-          this.looping.loopingpromise.promise =
-            loopqueue.then(generatePromise);
-        } else {
-          this.looping.queueblocker.resolve();
-        }
-      });
-    // Block the main queue until the loop ends.
+    // First iteration.
+    if (!pred(this.result)) {
+      append();
+    } else {
+      this.looping.queueblocker.resolve();
+    }
     return this.looping.queueblocker.promise;
   })
   .catch((err) => {
@@ -228,6 +230,11 @@ Runtime.prototype.until = function(pred) {
       'loopingpromise': Promise.resolve(),
       'queueblocker': new Runtime.Deferred()
     };
+    // After the looping, clear it.
+    this.looping.queueblocker.promise = 
+      this.looping.queueblocker.promise.then(() => {
+        this.looping = null;
+      });
   })
   .catch((err) => {
     this.reject(err);
