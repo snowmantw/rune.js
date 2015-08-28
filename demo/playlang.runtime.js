@@ -57,7 +57,6 @@ Runtime.prototype.onProcessError = function(err) {
     throw err;
   } else {
     // Only to interrupt the process.
-    //throw err;
   }
 };
 
@@ -84,9 +83,6 @@ Runtime.prototype.as = function(name) {
     }
     this.environment[name] = this.result;
     return this.result;
-  })
-  .catch((err) => {
-    this.onProcessError(err);
   });
 };
 
@@ -117,9 +113,6 @@ Runtime.prototype.next = function(step) {
   .then((result) => {
     // Get the result from newPromise and set it.
     this.result = result;
-  })
-  .catch((err) => {
-    this.onProcessError(err);
   });
 };
 
@@ -128,9 +121,6 @@ Runtime.prototype.match = function() {
   this.queue = this.queue.then(() => {
     this.matching = [];
     this.matching.matched = false;
-  })
-  .catch((err) => {
-    this.onProcessError(err);
   });
 };
 
@@ -138,8 +128,6 @@ Runtime.prototype.match = function() {
 Runtime.prototype.end = function() {
   this.queue = this.queue.then(() => {
     this.matching = null;
-  }).catch((err) => {
-    this.onProcessError(err);
   });
 };
 
@@ -156,8 +144,6 @@ Runtime.prototype.case = function(pred) {
     var predresult = pred(this.result);
     this.matching[id] = predresult;
     return id;
-  }).catch((err) => {
-    this.onProcessError(err);
   });
 };
 
@@ -186,9 +172,6 @@ Runtime.prototype.to = function(step) {
       this.result = result;
     }
     // Or, do not update the result it got.
-  })
-  .catch((err) => {
-    this.onProcessError(err);
   });
 };
 
@@ -239,9 +222,6 @@ Runtime.prototype.loop = function(step) {
       this.looping.queueblocker.resolve();
     }
     return this.looping.queueblocker.promise;
-  })
-  .catch((err) => {
-    this.onProcessError(err);
   });
 };
 
@@ -261,9 +241,6 @@ Runtime.prototype.until = function(pred) {
       this.looping.queueblocker.promise.then(() => {
         this.looping = null;
       });
-  })
-  .catch((err) => {
-    this.onProcessError(err);
   });
 };
 
@@ -289,9 +266,6 @@ Runtime.prototype.any = function() {
     return Promise.race(candidates.map((step) => {
       return generatePromise(step);
     })).then(updateResult);
-  })
-  .catch((err) => {
-    this.onProcessError(err);
   });
 };
 
@@ -343,9 +317,6 @@ Runtime.prototype._raceOrAll = function(promiseMethod) {
         console.error(e);
         throw e;
       }
-    })
-    .catch((err) => {
-      this.onProcessError(err);
     });
   };
   return generated;

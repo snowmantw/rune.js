@@ -57,8 +57,8 @@ playlang.start()
   })
   .next((ctx) => {
     console.log('>>>>> try to raise or interrupt');
-    //ctx.raise('TRY TO RAISE');
-    ctx.interrupt('TEST INTERRUPT');
+    ctx.raise('TRY TO RAISE');
+    //ctx.interrupt('TEST INTERRUPT');
   })
   .next((ctx, rs) => {
     console.log('>>>>>>> should not run!');
