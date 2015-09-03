@@ -1,4 +1,4 @@
-# Rune: language facilities to build a eDSL
+# Rune: language facilities to build an eDSL
 
 ## Motivation
 
