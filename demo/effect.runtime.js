@@ -22,8 +22,16 @@ Runtime.prototype.start = function() {
 
 Runtime.prototype.run = function() {
   if (this._state) {
+    // Append before we append our Effect function.
+    // So that if the error is an interruption and already captured
+    // by the handler, it will not effect the following steps.
+    this._state.queue = this._state.queue.catch(
+      this._state.onProcessError.bind(this._state)
+    );
+
     // Concat the built effect after the accumulating.
     this._state.queue = this._state.queue.then((data) => {
+      console.log('>>>> execute Effect');
       this._effectProcedure.forEach((p) => {
         // Note: all composed Effect and native function will receive the
         // same accumulated result from the State, and it should be considered
@@ -32,8 +40,8 @@ Runtime.prototype.run = function() {
         p(data);
       });
       this._effectProcedure.length = 0;
-    }).catch(this._state.onProcessError.bind(this._state));
-    this._state.done();
+    });
+    this._state.resolve();
   } else if (this._data) {
     // Subprecudure only starts from a data.
     this._effectProcedure.forEach((p) => {
