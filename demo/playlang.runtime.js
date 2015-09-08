@@ -1,5 +1,7 @@
 'use strict';
 
+import Effect from 'demo/effect.js';
+
 export default function Runtime() {}
 
 /**
@@ -9,10 +11,11 @@ Runtime.prototype.onchange = function(instance, change, stack) {
   // Since we don't need to keep things in stack until we have
   // real analyzers, the 'onchange' handler would return empty stack
   // to let the language runtime clear the stack every instruction.
-  this[change.type].apply(this, change.args);
+  var result = this[change.type].apply(this, change.args);
   // return empty 'handled' stack to let Rune keep no states of
   // every instruction, except the result.
-  return [ this.queue ];
+  return [ result ];
+  // TODO: how to concat `effect`; how to pass signal & data, not only data;
 };
 
 Runtime.Deferred = function() {
@@ -35,6 +38,9 @@ Runtime.Context = function(environment) {
  * Returning will move the main process to the next step.
  */
 Runtime.Context.prototype.returns = function(retvar) {
+  if (arguments.length > 1) {
+    retvar = Array.from(arguments);
+  }
   if (!this.interrupted) {
     this.retvar = retvar;
     this.deferred.resolve(retvar);
@@ -81,7 +87,6 @@ Runtime.prototype.start = function() {
   this.reject = deferred.reject;
   this.result = null; // the result from each step.
   this.environment = {};
-  return this;
 };
 
 Runtime.prototype.as = function(name) {
@@ -291,6 +296,10 @@ Runtime.prototype.all = function() {
   var all = this._raceOrAll('all');
   var candidates = Array.from(arguments);
   all.call(this, candidates);
+};
+
+Runtime.prototype.effect = function() {
+  return new Effect(this);
 };
 
 Runtime.prototype._raceOrAll = function(promiseMethod) {

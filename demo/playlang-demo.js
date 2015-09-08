@@ -4,7 +4,7 @@ import Playlang from './playlang.js';
 
 var playlang = new Playlang();
 playlang.start()
-  .next((ctx) => { console.log('>>>>> #0'); ctx.returns(3); }).as('a')
+  .next((ctx) => { console.log('>>>>>>>>>> #0: 3 as a', 3); ctx.returns(3); }).as('a')
   .until((x) => x === 9)
   .loop((ctx, x) => {
     ctx.returns(x + 1);
@@ -19,9 +19,9 @@ playlang.start()
     console.log('>>>>>>> I should run once');
     ctx.returns(x + 1);
   })
-  .next((ctx, x) => { console.log('>>>>> #1', x); ctx.returns(x + 4);}).as('b')
+  .next((ctx, x) => { console.log('>>>>>>>> #1: + 4 as b', x, x + 4); ctx.returns(x + 4);}).as('b')
   .next((ctx) => {
-    console.log('>>>>>>>>> #+ab: ', ctx.a + ctx.b);
+    console.log('>>>>>>>>> # + a b: ', ctx.a + ctx.b);
     ctx.returns(ctx.a + ctx.b);
   })
   .match()
@@ -31,6 +31,7 @@ playlang.start()
       new Promise((r, j) => {
         setTimeout(r, 2000);
       }).then(() => {
+        console.log('>>>>>>>>> # after waiting 2 secs; + 1: ',c ,c + 1);
         ctx.returns(c+1);
       });
     })
@@ -38,25 +39,33 @@ playlang.start()
       ctx.returns(d - 255);
     })
   .end()
-  .next((ctx, x) => { console.log('>>>>> #2', x); ctx.returns(x + 5);})
+  .next((ctx, x) => { console.log('>>>>>>>> # + 5:', x, x + 5); ctx.returns(x + 5);})
   .all((ctx) => {ctx.returns(1); },
       (ctx) => {
         ctx.returns(new Promise((r, j) => {
           setTimeout(() => { r(20); }, 1000);
         }));
       })
+  .next((ctx, rs) => {
+    console.log('>>>>>>>>> # after |all|: ', rs);
+    ctx.returns(rs);
+  })
   .any((ctx, rs) => {ctx.returns(rs[0] + rs[1]); },
       (ctx, rs) => {
         ctx.returns(new Promise((r, j) => {
           setTimeout(() => { r(rs[0] - rs[1]); }, 1000);
         }));
       })
+  .next((ctx, r) => {
+    console.log('>>>>>>>>> # after |any|; reset as [1, 2, 3]: ', r);
+    ctx.returns(1, 2, 3);
+  })
   .next((ctx, rs) => {
-    console.log('>>>>>>> rs: ', rs);
+    console.log('>>>>>>>>> # return multiple values will become array: ', rs);
     ctx.returns(1);
   })
   .next((ctx) => {
-    console.log('>>>>> try to raise or interrupt');
+    console.log('>>>>> try to raise error or interruption');
     //ctx.raise('TRY TO RAISE');
     ctx.interrupt('TEST INTERRUPT');
     // `interrupts` should cancel the `returns`.
@@ -70,8 +79,9 @@ playlang.start()
     console.log('>>>>>>> should not run!');
     ctx.returns(1);
   })
-  .done();
-  // TODO: done --> run! and `effect`!
+  .effect()
+  .start()
+  .run();
 
 /*
 

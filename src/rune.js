@@ -99,7 +99,7 @@
  * real eDSL it should be used only as an entry to dispatch the change to
  * the real handlers, which may comprise several states and components.
  */
-export function Rune() {}
+export default function Rune() {}
 
 /**
  * Helper method to build interface of a specific DSL. It would return a method
