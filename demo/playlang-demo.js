@@ -81,6 +81,10 @@ playlang.start()
   })
   .effect()
   .start()
+  .until(() => 3)
+  .loop(() => {
+    console.log('>>>>>>> test loop');
+  })
   .run();
 
 /*
