@@ -58,7 +58,8 @@ Runtime.Context.prototype.raise = function(err) {
   this.deferred.reject(err);
 };
 
-Runtime.Context.prototype.interrupt = function(reason = '') {
+Runtime.Context.prototype.interrupt = function(result, reason = '') {
+  this.result = result;
   this.interrupted = true;
   // The interrupt will be captured by main queue's `onProcessError`.
   var interrupt = new Runtime.Interrupt(reason);

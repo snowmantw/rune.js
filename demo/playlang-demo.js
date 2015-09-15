@@ -67,7 +67,7 @@ playlang.start()
   .next((ctx) => {
     console.log('>>>>> try to raise error or interruption');
     //ctx.raise('TRY TO RAISE');
-    ctx.interrupt('TEST INTERRUPT');
+    ctx.interrupt(3);
     // `interrupts` should cancel the `returns`.
     ctx.returns(3);
   })
@@ -81,9 +81,9 @@ playlang.start()
   })
   .effect()
   .start()
-  .until(() => 3)
-  .loop(() => {
-    console.log('>>>>>>> test loop');
+  .until((data) => { console.log('>>>>> data: ', data); return 3;})
+  .loop((data) => {
+    console.log('>>>>>>> test loop; data: ', data);
   })
   .run();
 

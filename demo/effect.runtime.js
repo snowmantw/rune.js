@@ -30,8 +30,9 @@ Runtime.prototype.run = function() {
     );
 
     // Concat the built effect after the accumulating.
-    this._state.queue = this._state.queue.then((data) => {
-      console.log('>>>> execute Effect');
+    this._state.queue = this._state.queue.then(() => {
+      // Get the result from the ended state.
+      var data = this._state.result;
       this._effectProcedure.forEach((p) => {
         // Note: all composed Effect and native function will receive the
         // same accumulated result from the State, and it should be considered
