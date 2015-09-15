@@ -1,6 +1,7 @@
 'use strict';
 
 import Playlang from './playlang.js';
+import Effect from './effect.js';
 
 var playlang = new Playlang();
 playlang.start()
@@ -84,6 +85,44 @@ playlang.start()
   .until((data) => { console.log('>>>>> data: ', data); return 3;})
   .loop((data) => {
     console.log('>>>>>>> test loop; data: ', data);
+  })
+  .match()
+    .case((data) => data === 2)
+    .to(() => {
+      return (new Effect()).start()
+        .until(() => 2)
+        .loop(() => {
+          console.log('>>>>> first case loop');
+        })
+        .done();
+    })
+    .case((data) => data === 1)
+    .to(() => {
+      (new Effect()).start()
+        .until(() => 2)
+        .loop((data) => {
+          console.log('>>>>> second case loop', data);
+        })
+        .done();
+    })
+    .case((data) => data === 1)
+    .to(() => {
+      (new Effect()).start()
+        .until(() => 2)
+        .loop(() => {
+          console.log('>>>>> duplicated second case loop');
+        })
+        .done();
+    })
+  .end()
+  .until((data) => { console.log('>>>>> data: ', data); return 4;})
+  .loop(() => {
+    (new Effect()).start()
+      .until(() => 2)
+      .loop((data) => {
+        console.log('>>>>> loop X loop', data);
+      })
+      .done();
   })
   .run();
 

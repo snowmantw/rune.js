@@ -11,8 +11,8 @@ export default function Runtime(state = null) {
  * When the stack of DSL changes, evaluate the Language.Node.
  */
 Runtime.prototype.onchange = function(instance, change, stack) {
-  this[change.type].apply(this, change.args);
-  return [];
+  var result = this[change.type].apply(this, change.args);
+  return [ result ];
 };
 
 Runtime.prototype.start = function() {
@@ -60,18 +60,25 @@ Runtime.prototype.run = function() {
 /**
  * Close the procedure definition, do nothing.
  */
-Runtime.prototype.done = function() {};
+Runtime.prototype.done = function() {
+  return this;
+};
 
 Runtime.prototype.next = function(step) {
-  // Another Effect chain.
-  if (step instanceof Runtime) {
-    this._effectProcedure.concat(step._effectProcedure);
-  } else if ('function' === typeof step) {
-    // An native function.
-    this._effectProcedure.push(step);
-  } else {
-    throw new Error('TypeError: step is neither another Effect nor function');
-  }
+  this._effectProcedure.push(() => {
+    if ('function' !== typeof(step)) {
+      throw new Error('TypeError: step is not a function: ' + typeof(step));
+    }
+
+    var result = step();
+    if (result instanceof Runtime) {
+      // It's a generator that generates new Effect chain.
+      // So we need to execute it now.
+      result._data = this._data;
+      result.run();
+    }
+    // Else, it is a plain function and it's done when executing it.
+  });
 };
 
 /**
@@ -92,6 +99,7 @@ Runtime.prototype.end = function() {
     var cases = this._cases;
     for (let branch of cases) {
       if (branch.prediction(data)) {
+        console.log('>>>>>>> is true');
         branch.todo(data);
         break;
       }
@@ -119,6 +127,7 @@ Runtime.prototype.to = function(step) {
   this.next(() => {
     var branch = this._cases[this._cases.length - 1];
     if (step instanceof Runtime) {
+      console.log('>>>> step instanceof Runtime');
       // Set a function will execute the subprocedure when it
       // is called with data.
       branch.todo = (data) => {
@@ -126,6 +135,7 @@ Runtime.prototype.to = function(step) {
         step.run();
       };
     } else {
+      console.log('>>>> step NOT instanceof Runtime', step);
       branch.todo = step;
     }
   });
@@ -141,6 +151,7 @@ Runtime.prototype.loop = function(step) {
     this._loopTimes = null;
     for (let i = 0; i < loopTimes; i++) {
       if (step instanceof Runtime) {
+        console.log('>>>>>_______  loop, instanceof', loopTimes);
         step._data = data;
         step.run();
       } else {
