@@ -33,6 +33,8 @@ Runtime.prototype.run = function() {
     this._state.queue = this._state.queue.then(() => {
       // Get the result from the ended state.
       var data = this._state.result;
+      console.log('>>>> get the data from state: ', data);
+      this._data = data;
       this._effectProcedure.forEach((p) => {
         // Note: all composed Effect and native function will receive the
         // same accumulated result from the State, and it should be considered
@@ -53,7 +55,6 @@ Runtime.prototype.run = function() {
       p(this._data);
     });
     this._effectProcedure.length = 0;
-    this._data = null;
   }
 };
 
@@ -64,20 +65,30 @@ Runtime.prototype.done = function() {
   return this;
 };
 
+Runtime.prototype._execute = function(step) {
+  if ('function' !== typeof(step)) {
+    throw new Error('TypeError: step is not a function: ' + typeof(step));
+  }
+
+  var result = step(this._data);
+  if (result instanceof Runtime) {
+    // It's a generator that generates new Effect chain.
+    // So we need to execute it now.
+    result._data = this._data;
+    result.run();
+  } else if ('undefined' !== typeof(result)) {
+    console.log(step.toSource());
+    // Else, it is a plain function and it's done when executing it.
+    // So it shouldn't return anything.
+    throw new Error('TypeError: step should return only Effect; now it is: ' +
+      typeof(result));
+  }
+
+};
+
 Runtime.prototype.next = function(step) {
   this._effectProcedure.push(() => {
-    if ('function' !== typeof(step)) {
-      throw new Error('TypeError: step is not a function: ' + typeof(step));
-    }
-
-    var result = step();
-    if (result instanceof Runtime) {
-      // It's a generator that generates new Effect chain.
-      // So we need to execute it now.
-      result._data = this._data;
-      result.run();
-    }
-    // Else, it is a plain function and it's done when executing it.
+    this._execute(step);
   });
 };
 
@@ -85,7 +96,7 @@ Runtime.prototype.next = function(step) {
  * A pure syntax node.
  */
 Runtime.prototype.match = function() {
-  this.next(() => {
+  this._effectProcedure.push(() => {
     this._cases = [];
   });
 };
@@ -95,11 +106,11 @@ Runtime.prototype.match = function() {
  * and then run it when the procedure is executing.
  */
 Runtime.prototype.end = function() {
-  this.next((data) => {
+  this._effectProcedure.push(() => {
+    var data = this._data;
     var cases = this._cases;
     for (let branch of cases) {
       if (branch.prediction(data)) {
-        console.log('>>>>>>> is true');
         branch.todo(data);
         break;
       }
@@ -112,7 +123,7 @@ Runtime.prototype.end = function() {
  * `pred` must be a function return true/false.
  */
 Runtime.prototype.case = function(pred) {
-  this.next(() => {
+  this._effectProcedure.push(() => {
     this._cases.push({
       'prediction': pred,
       'todo': null
@@ -124,20 +135,11 @@ Runtime.prototype.case = function(pred) {
  * `step`: another Effect or native function.
  */
 Runtime.prototype.to = function(step) {
-  this.next(() => {
+  this._effectProcedure.push(() => {
     var branch = this._cases[this._cases.length - 1];
-    if (step instanceof Runtime) {
-      console.log('>>>> step instanceof Runtime');
-      // Set a function will execute the subprocedure when it
-      // is called with data.
-      branch.todo = (data) => {
-        step._data = data;
-        step.run();
-      };
-    } else {
-      console.log('>>>> step NOT instanceof Runtime', step);
-      branch.todo = step;
-    }
+    branch.todo = () => {
+      this._execute(step);
+    };
   });
 };
 
@@ -146,17 +148,11 @@ Runtime.prototype.to = function(step) {
  * we can get the pred before we run the loop.
  */
 Runtime.prototype.loop = function(step) {
-  this.next((data) => {
+  this._effectProcedure.push(() => {
     var loopTimes = this._loopTimes;
     this._loopTimes = null;
     for (let i = 0; i < loopTimes; i++) {
-      if (step instanceof Runtime) {
-        console.log('>>>>>_______  loop, instanceof', loopTimes);
-        step._data = data;
-        step.run();
-      } else {
-        step(data);
-      }
+      this._execute(step);
     }
   });
 };
@@ -169,7 +165,8 @@ Runtime.prototype.loop = function(step) {
  * which is generated from the `data`.
  */
 Runtime.prototype.until = function(pred) {
-  this.next((data) => {
+  this._effectProcedure.push(() => {
+    var data = this._data;
     this._loopTimes = pred(data);
     if ('number' !== typeof this._loopTimes) {
       throw new Error('TypeError: loop times must be a number.');

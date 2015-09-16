@@ -98,7 +98,7 @@ playlang.start()
     })
     .case((data) => data === 1)
     .to(() => {
-      (new Effect()).start()
+      return (new Effect()).start()
         .until(() => 2)
         .loop((data) => {
           console.log('>>>>> second case loop', data);
@@ -107,7 +107,7 @@ playlang.start()
     })
     .case((data) => data === 1)
     .to(() => {
-      (new Effect()).start()
+      return (new Effect()).start()
         .until(() => 2)
         .loop(() => {
           console.log('>>>>> duplicated second case loop');
@@ -115,13 +115,14 @@ playlang.start()
         .done();
     })
   .end()
-  .until((data) => { console.log('>>>>> data: ', data); return 4;})
+  .until((data) => { console.log('>>>>> data; go 4 iterations: ', data); return 4;})
   .loop(() => {
-    (new Effect()).start()
+    return (new Effect()).start()
       .until(() => 2)
       .loop((data) => {
         console.log('>>>>> loop X loop', data);
       })
+      .next(() => { console.log('>>>> inner loop done');} )
       .done();
   })
   .run();
