@@ -104,8 +104,19 @@ Runtime.prototype.as = function(name) {
   });
 };
 
+/**
+ * Ends the definition but not run it.
+ */
 Runtime.prototype.done = function() {
   this.queue = this.queue.catch(this.onProcessError.bind(this));
+};
+
+/**
+ * Ends the definition and run it immediately with optional data.
+ */
+Runtime.prototype.run = function(data = null) {
+  this.queue = this.queue.catch(this.onProcessError.bind(this));
+  this.result = data;
   this.resolve(); // So the queue start to execute.
 };
 
@@ -259,31 +270,6 @@ Runtime.prototype.until = function(pred) {
       this.looping.queueblocker.promise.then(() => {
         this.looping = null;
       });
-  });
-};
-
-Runtime.prototype.any = function() {
-  var updateResult = (result) => {
-    this.result = result;
-  };
-  var generatePromise = (step) => {
-    var newPromise = step(this.result);
-    if (newPromise.next) {
-      return newPromise.queue;
-    } else if (newPromise.then) {
-      return newPromise;
-    } else {
-      // Ordinary function will return the result.
-      var newResult = newPromise;
-      updateResult(newResult);
-      return Promise.resolve(newResult);
-    }
-  };
-  var candidates = Array.from(arguments);
-  this.queue = this.queue.then(() => {
-    return Promise.race(candidates.map((step) => {
-      return generatePromise(step);
-    })).then(updateResult);
   });
 };
 

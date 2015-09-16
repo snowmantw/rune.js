@@ -2,21 +2,12 @@
 
 import Rune from 'dist/rune.js';
 
-/**
- * A demo eDSL with most features a full language should be with.
- * This file contains only interfacen, which means it need to be instantiated
- * with a runtime to execute the language.
- *
- * Note: since to handle async function properly need extra efforts,
- * so this demo language doesn't fully handle them yet. Although this eDSL
- * indeed put all steps in a Promise to be the first step toward that.
- */
 export default function Interface(runtime) {
   this.context = {
     started: false,
-    stopped: false,
-    looping: false,
-    matching: false
+    withgenerators: false,
+    withroute: false,
+    withswitcher: false
   };
   this.stack = [];
   this._runtime = runtime;
@@ -26,19 +17,37 @@ export default function Interface(runtime) {
 }
 
 Interface.prototype.start = Rune.define('start', 'begin');
-Interface.prototype.done = Rune.define('done', 'exit');
-Interface.prototype.run = Rune.define('run', 'exit');
-Interface.prototype.effect = Rune.define('effect', 'exit');
-Interface.prototype.next = Rune.define('next', 'push');
-Interface.prototype.match = Rune.define('match', 'begin');
-Interface.prototype.end = Rune.define('end', 'end');
-Interface.prototype.case = Rune.define('case', 'push');
-Interface.prototype.to = Rune.define('to', 'push');
-Interface.prototype.as = Rune.define('as', 'push');
-Interface.prototype.loop = Rune.define('loop', 'begin');
-Interface.prototype.until = Rune.define('until', 'end');
-Interface.prototype.any = Rune.define('any', 'push');
-Interface.prototype.all = Rune.define('all', 'push');
+Interface.prototype.generators = Rune.define('generators', 'push',
+    `Gives an array of generators to generate inputs, and the Edda
+     instance can call the generator's "onchange" method to be notified.
+     Yes, this is the most ugly bridge to the old observer pattern,
+     but another way, namely to loop over generators, will cost us too
+     much. Maybe it will be availalbe if we want to have a 'strict' mode.
+
+     generators:: [(() -> Signal)] -> ()`);
+
+Interface.prototype.route = Rune.define('route', 'push',
+    `Gives a function that receives one Signal and returns
+     a (State, Effect) pair, and then the Edda instance will
+     feed the Signal to the State, get the output of (Signal, Event)
+     pair, then apply the Signal to the Effect.
+
+     route:: (Signal -> (State, Effect)) -> ()`);
+
+Interface.prototype.switcher = Rune.define('switcher', 'push',
+    `Gives a function that receives one Event and generates
+     another Edda instance, so that the next tick it will
+     use the new instance instead of the current one.
+
+     switcher:: (Event -> Edda) -> () `);
+
+Interface.prototype.done = Rune.define('done', 'exit',
+    `The end of the definition of an Edda instance`);
+
+Interface.prototype.run = Rune.define('run', 'exit',
+    `Executes the Edda instance. It's an option to give it an initial
+     Signal as this the argument of this method, or it will create one
+     empty Signal to kick off the Edda instance.`);
 
 Interface.prototype.onchange = function(context, node, stack) {
   // When it's changed, evaluate it with analyzers & interpreter.
