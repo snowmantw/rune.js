@@ -1,9 +1,9 @@
 'use strict';
 var path = require('path');
 module.exports = {
-  entry: './playlang-demo.js',
+  entry: './edda-demo.js',
   devtool: 'inline-source-map',
-  output: { filename: 'playlang-demo.dist.js' },
+  output: { filename: 'edda-demo.dist.js' },
   resolve: { root: path.resolve(__dirname, '../') },
   module: {
     loaders: [

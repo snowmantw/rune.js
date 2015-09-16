@@ -1,9 +1,9 @@
 'use strict';
 
-import Playlang from './playlang.js';
+import State from './state.js';
 import Effect from './effect.js';
 
-var playlang = new Playlang();
+var playlang = new State();
 playlang.start()
   .next((ctx) => { console.log('>>>>>>>>>> #0: 3 as a', 3); ctx.returns(3); }).as('a')
   .until((x) => x === 9)
@@ -130,7 +130,7 @@ playlang.start()
 /*
 
 fn = (ctx, a, b) => {
-  var p = new Playlang()
+  var p = new State()
   ctx.returns(p.start().next((ctx) => {
     // It's good to shadowing the outer one,
     // since we already booked to return that.
@@ -140,7 +140,7 @@ fn = (ctx, a, b) => {
 
 // DONT USE; NOT IMPLEMENTED INTENTIONALLY
 gn = (ctx, a, b) => {
-  var p = new Playlang()
+  var p = new State()
   ctx.returns(new Promise((r, j) => {
     setTimeout(r(a - b), 1000);
   }).then((result) => {
@@ -149,7 +149,7 @@ gn = (ctx, a, b) => {
 };
 
 hn = (ctx, a, b) => {
-  var p = new Playlang()
+  var p = new State()
   (new Promise((r, j) => {
     setTimeout(r(a - b), 1000);
   }).then((result) => {

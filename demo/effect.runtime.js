@@ -77,7 +77,6 @@ Runtime.prototype._execute = function(step) {
     result._data = this._data;
     result.run();
   } else if ('undefined' !== typeof(result)) {
-    console.log(step.toSource());
     // Else, it is a plain function and it's done when executing it.
     // So it shouldn't return anything.
     throw new Error('TypeError: step should return only Effect; now it is: ' +
