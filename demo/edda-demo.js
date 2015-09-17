@@ -3,6 +3,7 @@
 import Action from './action.js';
 import Effect from './effect.js';
 
+/*
 var action = new Action();
 action.start()
   .next((ctx) => { console.log('>>>>>>>>>> #0: 3 as a', 3); ctx.returns(3); }).as('a')
@@ -126,6 +127,7 @@ action.start()
       .done();
   })
   .run();
+  */
 
 /*
 

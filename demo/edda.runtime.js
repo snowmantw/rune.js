@@ -106,8 +106,7 @@ Runtime.prototype._pulse = function(change) {
     var signal;
     if (!(change instanceof Signal)) {
       // Turn the native event to the signal.
-      var data = change;
-      signal = new Signal.Native(change.type, data);
+      signal = new Signal.Native(change.type, change);
     } else {
       // The change is already a signal.
       signal = change;
@@ -115,7 +114,8 @@ Runtime.prototype._pulse = function(change) {
 
     var { action, effect } = this._route(signal);
     if (!action) { return; }   // no corresponding one.
-    // _kickoff may interrupt the queue, if the result contains an Event.
+    // Note that `_kickoff` may interrupt the queue, if the result
+    // contains an Event.
     this._kickoff(signal, action, effect);
   });
   this._queue = this._queue.catch(this._onQueueError.bind(this));
@@ -130,15 +130,15 @@ Runtime.prototype._kickoff = function(currentsig , action, effect) {
     // Effects should not change the result (Signal, Event), so we can
     // collect them after that.
     var { signal, event } = effect._data;
-    if (event) { this._onEvent(signal, event); }
-    else { this._onSignal(signal); }
+    if (event) { this._onEventEnd(signal, event); }
+    else { this._onSignalEnd(signal); }
   });
   // While running the effect, it will be executed after the action,
   // and get the result from that.
   effect.run();
 };
 
-Runtime.prototype._onEvent = function(signal, event) {
+Runtime.prototype._onEventEnd = function(signal, event) {
   var newInstance = this._switcher(event);
   // And then interrupt all the following handlers of signals and
   // native events.
@@ -147,7 +147,22 @@ Runtime.prototype._onEvent = function(signal, event) {
   newInstance.run(signal);
 };
 
-Runtime.prototype._onSignal = function(signal) {
+Runtime.prototype._onSignalEnd = function(signal) {
+  // Feedback to the beginning.
+  //
+  // dirty trick: to prevent really implementing an infinite loop,
+  // if it isn't changed we pause the application until the next
+  // change (native event or action) from generators.
+  //
+  // We detect if it get changed in this way, since one in theory can only
+  // do synthesizing to create a new signal to "change" it. And every action
+  // must synthesize the signals to keep the change.
+  //
+  // And if an Action want to reset the whole data, it can fire an Event so
+  // that the new Edda instance will receive the new Signal as the only initial
+  // Signal, or it can reset the data fields one by one.
+  if (!signal._synthetic) { return; }
+  // Otherwise, let the loop begins.
   this._pulse(signal);
 };
 
