@@ -131,7 +131,7 @@ Runtime.prototype.next = function(step) {
     return context.deferred.promise;
   }).then((result) => {
     if (result.next) {
-      // If it's also a Playlang statements, concat it.
+      // If it's also a Edda Action statements, concat it.
       return result.queue;
     } else {
       // No matter it's value from an ordinary function or

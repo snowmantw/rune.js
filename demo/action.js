@@ -1,7 +1,7 @@
 'use strict';
 
-import Interface from 'demo/state.interface.js';
-import Runtime from 'demo/state.runtime.js';
+import Interface from 'demo/action.interface.js';
+import Runtime from 'demo/action.runtime.js';
 
 export default function State() {
   this._runtime = new Runtime();

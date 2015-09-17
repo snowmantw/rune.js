@@ -1,6 +1,7 @@
 'use strict';
 
 import Signal from 'demo/signal.js';
+// TODO: helpers: Signal.Action, Signal.Native....
 
 export default function Runtime() {}
 
@@ -12,11 +13,63 @@ Runtime.prototype.onchange = function(instance, change, stack) {
   return [ result ];
 };
 
+/**
+ * Signal is in fact the whole store, which contain all changes in this slice.
+ * Some helpers could help State methods distinguish the changes from those
+ * accumulated data. So State methods usually needn't not touch the store,
+ * and for Effects it depends on the context.
+ *
+ * And it follows these guidlines:
+ *
+ * Action: Store -> Store' ~> Effect
+ * via: (ActionLabel => run( Signal, Action:{ State, Effect } )
+ *
+ * `{ Component.onClick = () => call something captured in
+ *                              the component when the parent creates it }`
+ * via: Effect.DOM -> default effect utility of DOM rendering,
+ *                    will handle the part of rendering static name of action
+ *                    to actual native callbacks. So rendering function only
+ *                    need to receive ActionNames defined in the constants.
+ *                    And these actions will be fired as new Signals come from
+ *                    one of the input sources.
+ * ----
+ *
+ *  "Component" -> Effect (composable render functions) +
+ *                 specific interesting parts of the Signal,
+ *                 no matter whether it changes in each run
+ *
+ *  "Action" -> The picked State method to change the Signal in the run.
+ *              And also may fire an Event to perform the switching.
+ *              `Signal -> (Signal', Event)`
+ *
+ *  The flow:
+ *
+ *      Store -> Action -> Store' -> Component
+ *
+ *  becomes:
+ *
+ *      Signal -> Action -> (Signal', Event) -> Effect
+ *
+ *  consider the outermost Effect will receive the whole Signal' (Store),
+ *  there is no need to dispatch different part to specific Effect. So although
+ *  the route method will return (Action, Effect) when it is invoked, the
+ *  Effect it returns, is in fact always the outermost Effect.
+ */
+
 Runtime.prototype.start = function() {};
 Runtime.prototype.generators = function(generators) {
   this._generators = generators;
 };
 
+/**
+ * Route: contain lots of Action.
+ * It should be able to pick the corresponding one according
+ * to the incoming Signal. For example, if after one run the
+ * State return a Signal as {ACTION: 'foo', ....} with the action
+ * label (like consts in other frameworks) from our signal helper,
+ * it should be able to know the current action is foo, and the
+ * corresponding instance should be picked in this run.
+ */
 Runtime.prototype.route = function(route) {
   this._route = route;
 };
@@ -54,25 +107,25 @@ Runtime.prototype._pulse = function(change) {
     if (!(change instanceof Signal)) {
       // Turn the native event to the signal.
       var data = change;
-      signal = new Signal(change.type, data);
+      signal = new Signal.Native(change.type, data);
     } else {
       // The change is already a signal.
       signal = change;
     }
 
-    var { state, effect } = this._route(signal);
-    if (!state) { return; }   // no corresponding one.
+    var { action, effect } = this._route(signal);
+    if (!action) { return; }   // no corresponding one.
     // _kickoff may interrupt the queue, if the result contains an Event.
-    this._kickoff(signal, state, effect);
+    this._kickoff(signal, action, effect);
   });
   this._queue = this._queue.catch(this._onQueueError.bind(this));
 };
 
-Runtime.prototype._kickoff = function(currentsig ,state, effect) {
+Runtime.prototype._kickoff = function(currentsig , action, effect) {
   // Fill the Signal: the data varying over time.
-  state.result = currentsig;
-  // Let the effect been executed after the state method.
-  effect._state = state;
+  action.result = currentsig;
+  // Let the effect been executed after the action method.
+  effect._action = action;
   effect._effectProcedure.push(() => {
     // Effects should not change the result (Signal, Event), so we can
     // collect them after that.
@@ -80,7 +133,7 @@ Runtime.prototype._kickoff = function(currentsig ,state, effect) {
     if (event) { this._onEvent(signal, event); }
     else { this._onSignal(signal); }
   });
-  // While running the effect, it will be executed after the state,
+  // While running the effect, it will be executed after the action,
   // and get the result from that.
   effect.run();
 };
@@ -92,11 +145,6 @@ Runtime.prototype._onEvent = function(signal, event) {
   this._interrupt();
   // Finally, switch to the next instance with the signal.
   newInstance.run(signal);
-};
-
-Runtime.prototype._interrupt = function() {
-  var interrupt = new Runtime.Interrupt();
-  this._reject(interrupt);
 };
 
 Runtime.prototype._onSignal = function(signal) {
@@ -112,6 +160,11 @@ Runtime.prototype._onQueueError = function(err) {
   } else {
     // Only to interrupt the queue.
   }
+};
+
+Runtime.prototype._interrupt = function() {
+  var interrupt = new Runtime.Interrupt();
+  this._reject(interrupt);
 };
 
 Runtime.Deferred = function() {

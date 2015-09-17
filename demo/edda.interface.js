@@ -28,11 +28,11 @@ Interface.prototype.generators = Rune.define('generators', 'push',
 
 Interface.prototype.route = Rune.define('route', 'push',
     `Gives a function that receives one Signal and returns
-     a (State, Effect) pair, and then the Edda instance will
-     feed the Signal to the State, get the output of (Signal, Event)
+     a (Action, Effect) pair, and then the Edda instance
+     will feed the Signal to the Action, get the output of (Signal, Event)
      pair, then apply the Signal to the Effect.
 
-     route:: (Signal -> (State, Effect)) -> ()`);
+     route:: (Signal -> (Action, Effect)) -> ()`);
 
 Interface.prototype.switcher = Rune.define('switcher', 'push',
     `Gives a function that receives one Event and generates

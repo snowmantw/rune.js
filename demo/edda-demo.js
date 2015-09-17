@@ -1,10 +1,10 @@
 'use strict';
 
-import State from './state.js';
+import Action from './action.js';
 import Effect from './effect.js';
 
-var playlang = new State();
-playlang.start()
+var action = new Action();
+action.start()
   .next((ctx) => { console.log('>>>>>>>>>> #0: 3 as a', 3); ctx.returns(3); }).as('a')
   .until((x) => x === 9)
   .loop((ctx, x) => {
